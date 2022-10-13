@@ -16,7 +16,7 @@ struct TickerView: View {
                     HStack {
                         Text(symbolName.name)
                         Spacer()
-                        .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity)
                         Text(String(format: "%.3f", arguments: [symbolName.value]))
                     }
                 }

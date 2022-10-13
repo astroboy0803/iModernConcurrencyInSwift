@@ -6,10 +6,14 @@ class LittleJohnModel: ObservableObject {
     @Published private(set) var tickerSymbols: [Stock] = []
 
     func startTicker(_ selectedSymbols: [String]) async throws {
-        tickerSymbols = []
+//        tickerSymbols = []
         guard let url = URL(string: "http://localhost:8080/littlejohn/ticker?\(selectedSymbols.joined(separator: ","))") else {
             throw "The URL could not be created."
         }
+        // 以前做法 URLSession.shared.bytes(from:delegate:)
+        // 透過 delegate 做處理
+        
+        // return asyncquence
         let (stream, response) = try await liveURLSession.bytes(from: url)
         guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 else {
             throw "The server responded with an error."
@@ -24,7 +28,7 @@ class LittleJohnModel: ObservableObject {
                 print("updated: \(Date())")
             }
         }
-        
+
         // challenge
         await MainActor.run(body: {
             tickerSymbols = []
@@ -37,7 +41,7 @@ class LittleJohnModel: ObservableObject {
         configuration.timeoutIntervalForRequest = .infinity
         return URLSession(configuration: configuration)
     }()
-    
+
     func availableSymbols() async throws -> [String] {
         guard let url = URL(string: "http://localhost:8080/littlejohn/symbols") else {
             throw "The URL could not be created."

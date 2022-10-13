@@ -7,6 +7,7 @@ struct SymbolListView: View {
     @State var lastErrorMessage = "" {
         didSet { isDisplayingError = true }
     }
+
     @State var isDisplayingError = false
     @State var isDisplayingTicker = false
 
@@ -14,16 +15,16 @@ struct SymbolListView: View {
         NavigationView {
             VStack {
                 NavigationLink(destination: TickerView(selectedSymbols: Array($selected.wrappedValue).sorted()).environmentObject(model),
-                isActive: $isDisplayingTicker) {
+                               isActive: $isDisplayingTicker) {
                     EmptyView()
                 }.hidden()
                 List {
                     Section(content: {
                         if symbols.isEmpty {
-                        ProgressView().padding()
+                            ProgressView().padding()
                         }
                         ForEach(symbols, id: \.self) { symbolName in
-                        SymbolRow(symbolName: symbolName, selected: $selected)
+                            SymbolRow(symbolName: symbolName, selected: $selected)
                         }
                         .font(.custom("FantasqueSansMono-Regular", size: 18))
                     }, header: Header.init)
@@ -39,7 +40,7 @@ struct SymbolListView: View {
                     .disabled(selected.isEmpty)
                 }
                 .alert("Error", isPresented: $isDisplayingError, actions: {
-                    Button("Close", role: .cancel) { }
+                    Button("Close", role: .cancel) {}
                 }, message: {
                     Text(lastErrorMessage)
                 })

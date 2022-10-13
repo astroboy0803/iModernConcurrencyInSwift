@@ -21,7 +21,7 @@ struct DownloadView: View {
                             
                         }
                         isDownloadActive = false
-                    }
+                    }                    
                 },
                 downloadWithUpdatesAction: {
                 },
