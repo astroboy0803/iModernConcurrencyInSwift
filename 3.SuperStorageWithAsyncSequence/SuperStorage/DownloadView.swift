@@ -57,6 +57,7 @@ struct DownloadView: View {
                             })
                         } catch {}
                         isDownloadActive = false
+                        timerTask?.cancel()
                     }
                 },
                 downloadMultipleAction: {
