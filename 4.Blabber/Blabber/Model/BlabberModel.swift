@@ -13,31 +13,56 @@ class BlabberModel: ObservableObject {
 
     func shareLocation() async throws {}
 
+    @MainActor
     func countdown(to message: String) async throws {
         guard !message.isEmpty else { return }
-        
+
         var countdown = 3
-        let counter: AsyncStream<String> = .init {
-            do {
-              try await Task.sleep(nanoseconds: 1_000_000_000)
-            } catch {
-              return nil
-            }
-            
-            defer {
+        
+        // Xcode 14 is not working
+        // 要加上 @MainActor 就可以 -> no runloop → no timer. No timer → No messages
+        // reference: https://forums.raywenderlich.com/t/chapter-4-babble-timer-countdown-to-in-xcode-14-swift-5-7/174888/16
+        let counter: AsyncStream<String> = .init { continuation in
+            Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
+                guard countdown > 0 else {
+                  timer.invalidate()
+                  continuation.yield(with: .success("🎉 " + message))
+                  return
+                }
+                
+                continuation.yield("\(countdown) ...")
                 countdown -= 1
             }
-            
-            if countdown > 0 {
-                return "\(countdown) ..."
-            }
-            if countdown == 0 {
-                return "🎉 " + message
-            }
-            return nil
         }
-        for await countdownMessage in counter {
-            try await say(countdownMessage)
+        
+        // challenge - AsyncStream(unfolding:onCancel:)
+//        let counter: AsyncStream<String> = .init {
+//            do {
+//                try await Task.sleep(nanoseconds: 1_000_000_000)
+//            } catch {
+//                return nil
+//            }
+//
+//            defer {
+//                countdown -= 1
+//            }
+//
+//            if countdown > 0 {
+//                return "\(countdown) ..."
+//            }
+//            if countdown == 0 {
+//                return "🎉 " + message
+//            }
+//            return nil
+//        }
+        
+//        replace for await with forEach
+//        for await countdownMessage in counter {
+//            try await say(countdownMessage)
+//        }
+        
+        try await counter.forEach { message in
+            try await say(message)
         }
     }
 
@@ -80,6 +105,14 @@ class BlabberModel: ObservableObject {
 
         messages.append(.init(message: "\(status.activeUsers) active users"))
 
+        let notifications = Task {
+            await observeAppStatus()
+        }
+
+        defer {
+            notifications.cancel()
+        }
+
         for try await line in stream.lines {
             guard let data = line.data(using: .utf8), let update = try? jsonDecoder.decode(Message.self, from: data) else {
                 continue
@@ -111,4 +144,26 @@ class BlabberModel: ObservableObject {
         configuration.timeoutIntervalForRequest = .infinity
         return URLSession(configuration: configuration)
     }()
+
+    func observeAppStatus() async {
+        Task {
+            for await _ in await NotificationCenter.default.notifications(for: UIApplication.willResignActiveNotification) {
+                try? await say("\(username) went away", isSystemMessage: true)
+            }
+        }
+
+        Task {
+            for await _ in await NotificationCenter.default.notifications(for: UIApplication.didBecomeActiveNotification) {
+                try? await say("\(username) came back", isSystemMessage: true)
+            }
+        }
+    }
+}
+
+extension AsyncSequence {
+    func forEach(_ body: (Element) async throws -> Void) async throws {
+        for try await element in self {
+            try await body(element)
+        }
+    }
 }
